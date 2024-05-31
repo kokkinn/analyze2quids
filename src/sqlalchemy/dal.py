@@ -23,6 +23,8 @@ def create_raw_transaction(db: Session,
                            paid_out: str,
                            paid_in: str,
                            balance: str,
+                           source: str,
+                           filename: str
                            ) -> None | RawTransaction:
     """
     Create a new transaction record in the database.
@@ -33,7 +35,8 @@ def create_raw_transaction(db: Session,
                                     paid_out=paid_out,
                                     paid_in=paid_in,
                                     balance=balance,
-                                    source=BANK_NAME
+                                    source=source,
+                                    filename=filename
                                     )
 
     checksum: str = RawTransaction.calculate_checksum(db_transaction)

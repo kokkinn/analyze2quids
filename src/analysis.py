@@ -1,73 +1,59 @@
+"""
+Data analysis module
+"""
+import datetime
+
 from src.sqlalchemy.db import db_session
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sqlalchemy.orm import sessionmaker
 from src.sqlalchemy.models import EnhancedTransaction
 
-# Assuming you have an engine configured to connect to your database
-query = db_session.query(EnhancedTransaction)
 
-# Convert query result to pandas DataFrame
-df = pd.read_sql(query.statement, query.session.bind)
+def run_analysis(start_date: datetime.datetime, end_date: datetime) -> None:
+    """
+    Displays graphs
+    :param start_date: start date of analysis, inclusive
+    :param end_date: end date of analysis, inclusive
+    :return:
+    """
+    if not isinstance(start_date, datetime.datetime) or not isinstance(end_date, datetime.datetime):
+        raise TypeError('start_date and end_date must be datetime objects')
 
-# Close the session
-db_session.close()
+    query = db_session.query(EnhancedTransaction).filter(
+        EnhancedTransaction.date >= start_date,
+        EnhancedTransaction.date <= end_date).order_by(EnhancedTransaction.date)
 
-# Plotting Histograms/Distribution Plots
-plt.figure(figsize=(10, 6))
-sns.histplot(df['value'], kde=True)
-plt.title('Distribution of Transaction Value')
-plt.xlabel('Value')
-plt.ylabel('Frequency')
-plt.show()
+    df = pd.read_sql(query.statement, query.session.bind)
 
-plt.figure(figsize=(10, 6))
-sns.histplot(df['balance'], kde=True)
-plt.title('Distribution of Balance')
-plt.xlabel('Balance')
-plt.ylabel('Frequency')
-plt.show()
+    # Categories #############################
+    # categories_counts = df['entity'].value_counts()
+    # plt.figure(figsize=(10, 6))
+    # plt.bar(categories_counts.index, categories_counts.values, color='skyblue')
+    # plt.title('Categories and their Frequencies')
+    # plt.xticks(rotation=90)
+    # plt.xlabel('Categories')
+    # plt.ylabel('Frequencies')
+    # plt.show()
+    ##########################################
 
-# Plotting Scatter Plot
-plt.figure(figsize=(10, 6))
-sns.scatterplot(x='value', y='balance', data=df)
-plt.title('Scatter Plot: Value vs Balance')
-plt.xlabel('Value')
-plt.ylabel('Balance')
-plt.show()
+    # Balance ################################
+    plt.figure(figsize=(10, 6))
+    plt.plot(df['date'], df['value'])
+    plt.show()
 
-# Plotting Count Plots
-plt.figure(figsize=(10, 6))
-sns.countplot(x='type', data=df)
-plt.title('Count Plot: Transaction Type')
-plt.xlabel('Type')
-plt.ylabel('Count')
-plt.xticks(rotation=45)
-plt.show()
+    only_positive = df[df['direction'] == 'in']
+    plt.plot(only_positive['date'].tolist(), only_positive['value'].cumsum())
+    plt.show()
 
-plt.figure(figsize=(10, 6))
-sns.countplot(x='source', data=df)
-plt.title('Count Plot: Source')
-plt.xlabel('Source')
-plt.ylabel('Count')
-plt.xticks(rotation=45)
-plt.show()
+    only_negative = df[df['direction'] == 'out']
+    plt.plot(only_negative['date'].tolist(), only_negative['value'].apply(lambda x: -x).cumsum())
+    plt.show()
+    ##########################################
+    # TODO Filter by categories / what if one to another card transaction ?
 
-# Plotting Box Plot
-plt.figure(figsize=(10, 6))
-sns.boxplot(x='type', y='value', data=df)
-plt.title('Box Plot: Transaction Value by Type')
-plt.xlabel('Type')
-plt.ylabel('Value')
-plt.xticks(rotation=45)
-plt.show()
 
-# Plotting Time Series Plot
-plt.figure(figsize=(12, 6))
-sns.lineplot(x='date', y='value', data=df)
-plt.title('Time Series Plot: Transaction Value over Time')
-plt.xlabel('Date')
-plt.ylabel('Value')
-plt.show()
+sd = datetime.datetime(2023, 4, 1)
+ed = datetime.datetime(2024, 5, 3)
+run_analysis(sd, ed)

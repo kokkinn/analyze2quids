@@ -22,6 +22,7 @@ class RawTransaction(Base):
     balance = Column(String(20), nullable=False)
     source = Column(String(20), nullable=False)
     checksum = Column(String(64), nullable=False, unique=True)
+    filename = Column(String(100), nullable=False)
     enhanced_transaction = relationship("EnhancedTransaction", back_populates="raw_transaction")
     created_at = Column(DateTime, nullable=False, default=func.now())
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())

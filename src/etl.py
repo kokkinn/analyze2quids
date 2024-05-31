@@ -10,6 +10,7 @@ import pandas as pd
 import logging
 
 NATIONWIDE_ENCODING: str = 'latin1'
+SOURCE = 'nationwide'
 
 
 def get_dataframe(csv_path: str) -> pd.DataFrame:
@@ -23,12 +24,12 @@ def get_dataframe(csv_path: str) -> pd.DataFrame:
     return pd.read_csv(csv_path, skiprows=3, header=0, encoding=NATIONWIDE_ENCODING)
 
 
-def get_reader(csv_path: str) -> csv.DictReader:
+def get_reader(csv_path: str) -> tuple[csv.DictReader, str]:
     csvfile = open(csv_path, 'r', encoding=NATIONWIDE_ENCODING)
     skip_rows: int = 3
     for _ in range(skip_rows + 1):
         next(csvfile)
-    return csv.DictReader(csvfile)
+    return csv.DictReader(csvfile), csvfile.name.split('/')[-1]  # TODO OS specific?
 
 
 def load_csv_to_raw_db(csv_path: str) -> None:
@@ -37,9 +38,14 @@ def load_csv_to_raw_db(csv_path: str) -> None:
     nationwide_to_raw_transaction_map: dict[str, str] = {'Date': 'date', 'Transaction type': 'transaction_type',
                                                          'Description': 'description', 'Paid out': 'paid_out',
                                                          'Paid in': 'paid_in', 'Balance': 'balance'}
-    reader = get_reader(csv_path)
+    reader, fn = get_reader(csv_path)
     for row in reader:
-        rt = create_raw_transaction(db=db_session, **{nationwide_to_raw_transaction_map[k]: v for k, v in row.items()})
+        rt = create_raw_transaction(
+            db=db_session,
+            source=SOURCE,
+            filename=fn,
+            **{nationwide_to_raw_transaction_map[k]: v for k, v in row.items()}
+        )
         if not rt:
             count_none += 1
         count_total += 1
