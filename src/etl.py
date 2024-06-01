@@ -1,49 +1,35 @@
 """
 Main script for now. Should split later
 """
-import csv
 import os
+
+from src.get_file import get_nationwide_reader
+from src.sqlalchemy.constants import SOURCE
 from src.sqlalchemy.dal import create_raw_transaction, create_enhanced_transaction
 from src.sqlalchemy.db import db_session
 from src.sqlalchemy.models import RawTransaction, EnhancedTransaction
-import pandas as pd
-import logging
-
-NATIONWIDE_ENCODING: str = 'latin1'
-SOURCE = 'nationwide'
-
-
-def get_dataframe(csv_path: str) -> pd.DataFrame:
-    """
-    Returns dataframe read from file
-    :param csv_path:
-    :return: pd.DataFrame
-    """
-    # if not os.path.exists(csv_path):
-    #     raise FileNotFoundError(f'CSV {csv_path} does not exist')
-    return pd.read_csv(csv_path, skiprows=3, header=0, encoding=NATIONWIDE_ENCODING)
-
-
-def get_reader(csv_path: str) -> tuple[csv.DictReader, str]:
-    csvfile = open(csv_path, 'r', encoding=NATIONWIDE_ENCODING)
-    skip_rows: int = 3
-    for _ in range(skip_rows + 1):
-        next(csvfile)
-    return csv.DictReader(csvfile), csvfile.name.split('/')[-1]  # TODO OS specific?
 
 
 def load_csv_to_raw_db(csv_path: str) -> None:
     count_none: int = 0
     count_total: int = 0
-    nationwide_to_raw_transaction_map: dict[str, str] = {'Date': 'date', 'Transaction type': 'transaction_type',
+
+    # NATIONWIDE CSV file for Debit / Credit map to -> DAL function arguments as Field names
+    nationwide_to_raw_transaction_map: dict[str, str] = {'Date': 'date', 'Transaction type': 'type',
+                                                         # TODO  mix for debit and credit, maybe separate
                                                          'Description': 'description', 'Paid out': 'paid_out',
-                                                         'Paid in': 'paid_in', 'Balance': 'balance'}
-    reader, fn = get_reader(csv_path)
+                                                         'Paid in': 'paid_in', 'Balance': 'balance',
+
+                                                         'Transactions': 'description',
+                                                         'Location': 'location'
+                                                         }
+    reader, card_name, fn = get_nationwide_reader(csv_path)
     for row in reader:
         rt = create_raw_transaction(
             db=db_session,
             source=SOURCE,
             filename=fn,
+            card_name=card_name,
             **{nationwide_to_raw_transaction_map[k]: v for k, v in row.items()}
         )
         if not rt:
@@ -66,6 +52,9 @@ def load_raw_to_enhanced_db():
     return loaded_count
 
 
-csv_name: str = 'data/Statement Download 2024-May-29 9-21-29.csv'
-load_csv_to_raw_db(csv_name)
-load_raw_to_enhanced_db()
+# csv_name: str = 'data/Statement Download 2024-May-29 9-21-29.csv'
+# print(get_reader(csv_name))
+
+for filename in os.listdir('data'):
+    load_csv_to_raw_db(f'data/{filename}')
+    load_raw_to_enhanced_db()

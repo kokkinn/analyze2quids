@@ -18,26 +18,31 @@ class TransactionTypes(enum.Enum):
 
 def create_raw_transaction(db: Session,
                            date: str,
-                           transaction_type: str,
                            description: str,
                            paid_out: str,
                            paid_in: str,
-                           balance: str,
+                           card_name: str,
                            source: str,
-                           filename: str
+                           filename: str,
+                           location: str = None,
+                           balance: str = None,
+                           type: str = None,
                            ) -> None | RawTransaction:
     """
     Create a new transaction record in the database.
     """
-    db_transaction = RawTransaction(date=date,
-                                    transaction_type=transaction_type,
-                                    description=description,
-                                    paid_out=paid_out,
-                                    paid_in=paid_in,
-                                    balance=balance,
-                                    source=source,
-                                    filename=filename
-                                    )
+    db_transaction = RawTransaction(
+        date=date,
+        type=type,
+        description=description,
+        paid_out=paid_out,
+        paid_in=paid_in,
+        balance=balance,
+        location=location,
+        card_name=card_name,
+        source=source,
+        filename=filename
+    )
 
     checksum: str = RawTransaction.calculate_checksum(db_transaction)
     if existing := db.query(RawTransaction).filter_by(checksum=checksum).first():
@@ -64,12 +69,13 @@ def create_enhanced_transaction(db: Session, raw_transaction_id: int) -> None | 
 
     db_transaction = EnhancedTransaction(
         date=datetime.datetime.strptime(raw_transaction.date, "%d %b %Y"),
-        type=raw_transaction.transaction_type,
+        type=raw_transaction.type,
         entity=raw_transaction.description,
         value=get_cost_from_str(raw_transaction.paid_in) if raw_transaction.paid_in else get_cost_from_str(
             raw_transaction.paid_out),
         direction=TransactionTypes.IN.value if raw_transaction.paid_in else TransactionTypes.OUT.value,
-        balance=get_cost_from_str(raw_transaction.balance),
+        location=raw_transaction.location,
+        balance=get_cost_from_str(raw_transaction.balance) if raw_transaction.balance else None,
         source=raw_transaction.source,
         raw_transaction_id=raw_transaction_id
     )

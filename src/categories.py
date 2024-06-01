@@ -10,43 +10,67 @@ from pprint import pprint as pp
 from collections import defaultdict
 
 # df = pd.read_sql_query(q.statement, db_session.bind)
+food_patterns: list[str] = [
+    r'tesco', r'sainsbury\'s', r'mcdonalds', r'amazon fresh', r'wetherspoon',
+    r'co-op', r'greggs', r'kebab', r'iceland', r'food', r'costa', r'coffee',
+    r'domino\'s', r'wendy\'s', r'supermarket', r'restaurant', r'meat', r'halal',
+    r'grocery', r'aldi', r'sainsburys', r'albina', r'grill', r'spoon', r't4',
+    r'chopstick', r'oodles', r'minimarket', r'twg', r'caffe', r'franco manca',
+    r'quick shop', r'super snax', r'snax', r'gdk', r'tortilla',
+    r'bilmonte', r'chopstix',
+    r'thirst soho', r'dines', r'original thai chi', r'faith wok chin',
+    r'nisa local', r'poundland', r'crown & cushion', r'mleczko', r'YAGMUR', r'cex borehamwood', r'ja bee', r'nilgiri',
+    r'simply local', 'poundstretcher', r'mission possible', r'casablanca', r'budgens', 'george street express',
+    r'black sheep', r'netto kent', 'opa london'
+]
 
 CATEGORY_REGEX: dict[str, str] = {
+    'accommodation': r'athena hotel|hotel',
+    'adobe': r'adobe',
+    'alcohol and pub': r'\bpub\b|\btavern\b|wine|alcohol|camden eye|spread eagle',
     'amazon': 'amazon',
-    'ebay': 'ebay',
-    'food': r'tesco|sainsbury\'s|mcdonalds|amazon fresh|wetherspoon|co-op|greggs|kebab|iceland|food|costa|coffee|domino\'s|wendy\'s|supermarket|restaurant|meat|halal|grocery|aldi|sainsburys|albina|grill|spoon|t4|chopstick|oodles|minimarket|twg|caffe',
-    'transport': r'trainline|tfl|bus\b|redrose travel',
-    'clothes': r'primark|marks&spencer|h & m|foot locker',
-    'gym': r'nuffield|the gym group|the gym ltd',
     'apple_bill': r'apple\.com',
-    'pharmacy': r'pharmacy',
-    'taxi': r'taxi|uber|bolt',
-    'paypal': r'paypal',
     'aws': r'aws',
-    'gadgets': r'apple store|gadget|laptop',
-    'phone': r'ee',
+    'charity': r'charity',
+    'clothes': r'primark|marks&spencer|h & m|foot locker|british heart foundation|pah|st christophers|hewits of croydon',
     'driving learning': r'dvsa|dvla|reddriving',
-    'musical gear': r'feline guitars',
-    'rehersal': r'mill hill music complex|pirate|the premises',
-    'transfers in': r'bank credit',
     'education': r'hillel|course',
-    'post office': r'post office',
-    'personal transfers': r'^[a-z]{1,20} [a-z]{1,20}$',
+    'ebay': 'ebay',
+    'entertainment and concerts': 'zoo|worlds end|bush empire',
+    'food': '|'.join(food_patterns),
+    'gadgets': r'apple store|gadget|laptop|argos',
+    'health': r'pharmacy|st\. clare chemists|boots|wh smith|specsavers|savers health',
+    'gym': r'nuffield|the gym group|the gym ltd',
+    'linkedin': r'linkedin',
+    'music gear, merch, vinyls': r'feline guitars|shadowcast ltd|hmv|vinyl|merch|bandcamp|napalm',
     'number': r'^\d{1,10} ?\d{1,10}( [credit|withdrawal].*)?$',
+    'phone': r'^ee',
+    'post office': r'post office',
+    'postcards / photo / stationery / home': 'card factory|diy|snappy snaps|onebelow',
+    'rehersal': r'mill hill music complex|pirate|the premises|rehersal',
+    'rent': 'flatshare',
+    'taxi': r'\btaxi\b|uber|bolt',
     'toys': 'lego',
-    'card': 'card|diy'
+    'transfers in': r'bank credit|credit',
+    'transfers out': r'^[a-zA-Z]{1,20} [a-zA-Z]{1,20}$',
+    'transport': r'trainline|tfl|bus\b|redrose travel|swrailwayselfserve|sumup|swtrains|train',
+    'withdrawals': r'withdrawal'
 }
 
 
-def get_category_from_entity(entity: str) -> str | None:
-    for category, pattern in CATEGORY_REGEX.items():
-        if re.search(pattern, entity.lower()):
-            return category
+# TODO manual category override at load stage?
+# TODO AI driven regex adjustment with web search?
+def get_categories_from_entity(entity: str) -> list[str | None]:
+    return [category for category, pattern in CATEGORY_REGEX.items() if re.search(pattern, entity, re.IGNORECASE)]
 
 
 categorised = defaultdict(list)
 q = db_session.query(EnhancedTransaction)
 res = q.all()
 for r in res:
-    categorised[get_category_from_entity(r.entity)].append(r.entity)
+    cs = get_categories_from_entity(r.entity)
+    if not cs:
+        categorised[None].append(r.entity)
+    for c in cs:
+        categorised[c].append(r.entity)
 pp(categorised)

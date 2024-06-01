@@ -15,12 +15,15 @@ class RawTransaction(Base):
 
     id = Column(Integer, primary_key=True)
     date = Column(String(20), nullable=False)
-    transaction_type = Column(String(100), nullable=False)
-    description = Column(String(200), nullable=False)
+    type = Column(String(100),
+                  nullable=True)  # Payment to / Contactless Payment / Visa purchase / Bank credit IN/OUT
+    description = Column(String(200), nullable=False)  # Business/intermediate name / Bank credit IN/OUT / ?Card Number?
     paid_out = Column(String(20), nullable=False)
     paid_in = Column(String(20), nullable=False)
-    balance = Column(String(20), nullable=False)
-    source = Column(String(20), nullable=False)
+    balance = Column(String(20), nullable=True)
+    card_name = Column(String(50), nullable=False)  # name displayed in statement
+    location = Column(String(40), nullable=True)  # location of the transaction
+    source = Column(String(20), nullable=False)  # bank name
     checksum = Column(String(64), nullable=False, unique=True)
     filename = Column(String(100), nullable=False)
     enhanced_transaction = relationship("EnhancedTransaction", back_populates="raw_transaction")
@@ -28,7 +31,7 @@ class RawTransaction(Base):
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
     def calculate_checksum(self) -> str:
-        data = f"{self.date}{self.transaction_type}{self.description}{self.paid_out}{self.paid_in}{self.balance}"
+        data = f"{self.date}{self.type}{self.description}{self.paid_out}{self.paid_in}{self.balance}"
         checksum = hashlib.sha256(data.encode()).hexdigest()
         return checksum
 
@@ -41,11 +44,12 @@ class EnhancedTransaction(Base):
 
     id = Column(Integer, primary_key=True)
     date = Column(DateTime, nullable=False)
-    type = Column(String(100), nullable=False)
+    type = Column(String(100), nullable=True)
     entity = Column(String(100), nullable=False)
     value = Column(Float, nullable=False)
     direction = Column(String(3), nullable=False)
-    balance = Column(Float, nullable=False)
+    location = Column(String(40), nullable=True)
+    balance = Column(Float, nullable=True)
     source = Column(String(20), nullable=False)
     raw_transaction_id = Column(Integer, ForeignKey('raw_transactions_tb.id'), nullable=False)
     created_at = Column(DateTime, nullable=False, default=func.now())
@@ -56,3 +60,6 @@ class EnhancedTransaction(Base):
         data = f"{self.date}{self.type}{self.entity}{self.value}{self.direction}{self.balance}"
         checksum = hashlib.sha256(data.encode()).hexdigest()
         return checksum
+
+    def __repr__(self) -> str:
+        return f'<Enhanced Transaction {self.id}, {self.type} {self.entity} {self.value} {self.direction}>'
