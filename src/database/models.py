@@ -46,10 +46,12 @@ class EnhancedTransaction(Base):
     date = Column(DateTime, nullable=False)
     type = Column(String(100), nullable=True)
     entity = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False)  # derived at a runtime of ETL
     value = Column(Float, nullable=False)
     direction = Column(String(3), nullable=False)
     location = Column(String(40), nullable=True)
     balance = Column(Float, nullable=True)
+    card_name = Column(String(50), nullable=False)
     source = Column(String(20), nullable=False)
     raw_transaction_id = Column(Integer, ForeignKey('raw_transactions_tb.id'), nullable=False)
     created_at = Column(DateTime, nullable=False, default=func.now())
@@ -63,3 +65,11 @@ class EnhancedTransaction(Base):
 
     def __repr__(self) -> str:
         return f'<Enhanced Transaction {self.id}, {self.type} {self.entity} {self.value} {self.direction}>'
+
+
+class PersonalCategoryRegex(Base):
+    __tablename__ = 'personal_categories_tb'
+
+    id = Column(Integer, primary_key=True)
+    category = Column(String(50), nullable=False)
+    regex = Column(String(50), nullable=False)

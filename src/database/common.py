@@ -1,9 +1,7 @@
-import logging
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.sqlalchemy.models import Base
+from src.database.models import Base
 
 host: str = 'localhost'
 db_name: str = 'analyze2quids'

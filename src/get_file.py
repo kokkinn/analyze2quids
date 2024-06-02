@@ -3,7 +3,7 @@ import os
 
 import pandas as pd
 
-from src.sqlalchemy.constants import NATIONWIDE_ENCODING, NATIONWIDE_META_ROWS_NUM
+from src.database.constants import NATIONWIDE_ENCODING, NATIONWIDE_META_ROWS_NUM
 
 
 def get_clean_values_from_csv_row(row: str) -> list:
