@@ -3,7 +3,7 @@ The Module for SQL Alchemy
 """
 import hashlib
 
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, func, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, func, ForeignKey, UniqueConstraint, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -71,5 +71,9 @@ class PersonalCategoryRegex(Base):
     __tablename__ = 'personal_categories_tb'
 
     id = Column(Integer, primary_key=True)
-    category = Column(String(50), nullable=False)
+    category = Column(String(50), nullable=False, unique=True)
     regex = Column(String(50), nullable=False)
+    hide = Column(Boolean, nullable=False, default=False)
+
+    def __repr__(self):
+        return f'<Personal Category {self.category}>'

@@ -2,14 +2,47 @@
 Data analysis module
 """
 import datetime
-
+from typing import Literal
 from src.database.common import db_session
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from src.database.models import EnhancedTransaction
-from src.database.dal import get_enhanced_transactions_dataframe
+from src.database.dal import get_enhanced_transactions_dataframe, get_excluded_personal_categories
+
+
+def draw_categories_chart(df: pd.DataFrame, chart_type: Literal['frequency', 'value'], limit_to: int = 10,
+                          title: str = None) -> None:
+    actual_start = df['date'].min().strftime('%b %d, %Y')
+    actual_end = df['date'].max().strftime('%b %d, %Y')
+
+    plt.figure(figsize=(10, 6) if chart_type == 'frequency' else (16, 10))
+
+    if chart_type == 'frequency':
+        categories_counts = df['category'].value_counts().head(limit_to)
+        bars = plt.bar(categories_counts.index, categories_counts.values, color='skyblue')
+    else:
+        categories_total_cost = df.groupby('category')['value'].sum().sort_values(ascending=False).head(limit_to)
+        bars = plt.bar(categories_total_cost.index, categories_total_cost.values, color='skyblue')
+        total = sum(categories_total_cost.values)
+        plt.annotate(f'Total value: {total}', xy=(0.85, 0.9), xycoords='axes fraction')
+
+    for bar in bars:
+        height = bar.get_height()
+        plt.annotate(f'{height}',
+                     xy=(bar.get_x() + bar.get_width() / 2, height),
+                     xytext=(0, 3),
+                     textcoords="offset points",
+                     ha='center', va='bottom')
+
+    plt.title(
+        f"{title if title else f'Categories and their {chart_type.capitalize()}'}\n{actual_start} to {actual_end}")
+    plt.xticks(rotation=90)
+    plt.xlabel('Categories')
+    plt.ylabel(chart_type.capitalize())
+    plt.tight_layout()
+    plt.show()
 
 
 def run_analysis(date_start: datetime.datetime, date_end: datetime) -> None:
@@ -22,50 +55,21 @@ def run_analysis(date_start: datetime.datetime, date_end: datetime) -> None:
     if not isinstance(date_start, datetime.datetime) or not isinstance(date_end, datetime.datetime):
         raise TypeError('date_start and date_end must be datetime objects')
 
+    limit_to: int = 10
+    exclude_categories: list[str] = [str(pc.category) for pc in get_excluded_personal_categories(db_session)]
     df = get_enhanced_transactions_dataframe(db_session, date_start, date_end)
-    actual_start = df['date'].min().strftime('%b %d, %Y')
-    actual_end = df['date'].max().strftime('%b %d, %Y')
-
-    # Categories #############################
-    # Frequency
-    limit_to: int = 100
-    categories_counts = df['category'].value_counts()  # series: category -> count
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(categories_counts.index[0:limit_to], categories_counts.values[0:limit_to], color='skyblue')
-    for bar in bars:
-        height = bar.get_height()
-        plt.annotate(f'{height}',
-                     xy=(bar.get_x() + bar.get_width() / 2, height),
-                     xytext=(0, 3),  #
-                     textcoords="offset points",
-                     ha='center', va='bottom')
-    plt.title('Categories and their Frequencies')
-    plt.xticks(rotation=90)
-    plt.xlabel('Categories')
-    plt.ylabel('Frequencies')
-    plt.tight_layout()
-    plt.show()
-
-    # Cost
-    plt.figure(figsize=(16, 10))
     df['value'] = df['value'].astype(int)
-    categories_total_cost = df.groupby('category')['value'].sum().sort_values(
-        ascending=False)  # series: category -> cost
-    bars = plt.bar(categories_total_cost.index[0:limit_to], categories_total_cost.values[0:limit_to], color='skyblue')
-    for bar in bars:
-        height = bar.get_height()
-        plt.annotate(f'{height}',
-                     xy=(bar.get_x() + bar.get_width() / 2, height),
-                     xytext=(0, 3),  #
-                     textcoords="offset points",
-                     ha='center', va='bottom')
-    plt.title(f'Categories and their Cost. \n{actual_start} to {actual_end}')
-    plt.xticks(rotation=90)
-    plt.xlabel('Categories')
-    plt.ylabel('Total cost')
-    plt.tight_layout()
-    plt.show()
-    ##########################################
+    if df.empty:
+        print(f'WARNING. Dataframe is empty: {df}, exiting...')
+        return
+    df = df[~df['category'].isin(exclude_categories)]
+    df_expenses, df_incomes = df[(df['direction'] == 'out') & (df['category'] != 'personal card2card')], df[
+        df['direction'] == 'in']
+    draw_categories_chart(df_expenses, chart_type='frequency', limit_to=limit_to,
+                          title=f'Top {limit_to} frequent categories')
+    draw_categories_chart(df_expenses, chart_type='value', limit_to=limit_to,
+                          title=f'Top {limit_to} most expensive categories')
+    draw_categories_chart(df_incomes, chart_type='value', limit_to=limit_to, title=f'Top {limit_to} sources of income')
 
     # Balance ################################
     # plt.figure(figsize=(10, 6))

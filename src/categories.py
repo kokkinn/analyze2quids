@@ -57,7 +57,7 @@ CATEGORY_REGEX: dict[str, str] = {
     'transfers in': r'bank credit|credit',
     'transfers out': r'^[a-zA-Z]{1,20} [a-zA-Z]{1,20}$',
     'transport': r'trainline|tfl|bus\b|redrose travel|swrailwayselfserve|sumup|swtrains|train',
-    'withdrawals': r'withdrawal'
+    'Personal card2card': r'withdrawal'
 }
 
 personal_categories: list[type[PersonalCategoryRegex]] = get_all_personal_categories(db_session)

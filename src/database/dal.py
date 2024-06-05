@@ -121,7 +121,12 @@ def get_enhanced_transactions_dataframe(db: Session, date_start: datetime = None
 def get_all_personal_categories(db: Session) -> list[type[PersonalCategoryRegex]]:
     return db.query(PersonalCategoryRegex).all()
 
+
+def get_excluded_personal_categories(db: Session) -> list[type[PersonalCategoryRegex]]:
+    return db.query(PersonalCategoryRegex).filter(PersonalCategoryRegex.hide == True).all()
+
 # from src.database.common import db_session
+# print(get_excluded_personal_categories(db_session))
 
 # create_raw_transaction(db_session, '25 Apr 2002', 'Type A', 'Description', '£10', '', '£ 20000')
 # print(get_enhanced_transactions(db_session, datetime.datetime(2020, 1, 1), datetime.datetime(2025, 1, 2)))
