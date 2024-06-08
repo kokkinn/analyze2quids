@@ -55,18 +55,18 @@ def run_analysis(date_start: datetime.datetime, date_end: datetime) -> None:
     if not isinstance(date_start, datetime.datetime) or not isinstance(date_end, datetime.datetime):
         raise TypeError('date_start and date_end must be datetime objects')
 
-    limit_to: int = 10
+    limit_to: int = 30
     exclude_categories: list[str] = [str(pc.category) for pc in get_excluded_personal_categories(db_session)]
     df = get_enhanced_transactions_dataframe(db_session, date_start, date_end)
-    df['value'] = df['value'].astype(int)
     if df.empty:
         print(f'WARNING. Dataframe is empty: {df}, exiting...')
         return
+    df['value'] = df['value'].astype(int)
     df = df[~df['category'].isin(exclude_categories)]
-    df_expenses, df_incomes = df[(df['direction'] == 'out') & (df['category'] != 'personal card2card')], df[
-        df['direction'] == 'in']
-    draw_categories_chart(df_expenses, chart_type='frequency', limit_to=limit_to,
-                          title=f'Top {limit_to} frequent categories')
+    df = df[(df['flow'] != 'me2me') & (df['flow'] != 'refund')]
+    df_expenses, df_incomes = df[df['direction'] == 'out'], df[df['direction'] == 'in']
+    # draw_categories_chart(df_expenses, chart_type='frequency', limit_to=limit_to,
+    #                       title=f'Top {limit_to} frequent categories')
     draw_categories_chart(df_expenses, chart_type='value', limit_to=limit_to,
                           title=f'Top {limit_to} most expensive categories')
     draw_categories_chart(df_incomes, chart_type='value', limit_to=limit_to, title=f'Top {limit_to} sources of income')

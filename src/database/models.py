@@ -49,6 +49,7 @@ class EnhancedTransaction(Base):
     category = Column(String(50), nullable=False)  # derived at a runtime of ETL
     value = Column(Float, nullable=False)
     direction = Column(String(3), nullable=False)
+    flow = Column(String(10), nullable=False)
     location = Column(String(40), nullable=True)
     balance = Column(Float, nullable=True)
     card_name = Column(String(50), nullable=False)
@@ -77,3 +78,10 @@ class PersonalCategoryRegex(Base):
 
     def __repr__(self):
         return f'<Personal Category {self.category}>'
+
+
+class BankAccount(Base):
+    __tablename__ = 'bank_accounts_tb'
+
+    id = Column(Integer, primary_key=True)
+    name_from_csv = Column(String(50), nullable=False)

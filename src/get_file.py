@@ -16,7 +16,7 @@ def get_nationwide_meta_rows(rows: list[str]) -> dict[str, str] | None:
     for r in rows:
         a = r.split(',')
         if len(a) == 2:
-            res[a[0].strip('"')] = a[1].strip('"').strip("\n")
+            res[a[0].strip('"')] = a[1].strip('"').strip("\n").strip('"')
     if expected_meta != tuple(res.keys()):
         print(f'WARNING. Invalid meta keys: {res}')
         return None

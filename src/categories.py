@@ -1,12 +1,14 @@
 """
 Derives transactions categories
 """
+import enum
+from typing import Literal
 
 import pandas as pd
 import re
 from src.database.common import db_session
-from src.database.models import EnhancedTransaction, PersonalCategoryRegex
-from src.database.dal import get_all_personal_categories
+from src.database.models import EnhancedTransaction, PersonalCategoryRegex, RawTransaction, BankAccount
+from src.database.dal import get_all_personal_categories, get_all_bank_accounts
 from pprint import pprint as pp
 from collections import defaultdict
 
@@ -45,7 +47,6 @@ CATEGORY_REGEX: dict[str, str] = {
     'gym': r'nuffield|the gym group|the gym ltd',
     'linkedin': r'linkedin',
     'music gear, merch, vinyls': r'feline guitars|shadowcast ltd|hmv|vinyl|merch|bandcamp|napalm',
-    'number': r'^\d{1,10} ?\d{1,10}( [credit|withdrawal].*)?$',
     'transaction fee': 'transaction fee',
     'phone': r'^ee',
     'post office': r'post office',
@@ -54,13 +55,22 @@ CATEGORY_REGEX: dict[str, str] = {
     'rent': 'flatshare',
     'taxi': r'\btaxi\b|uber|bolt',
     'toys': 'lego',
-    'transfers in': r'bank credit|credit',
-    'transfers out': r'^[a-zA-Z]{1,20} [a-zA-Z]{1,20}$',
     'transport': r'trainline|tfl|bus\b|redrose travel|swrailwayselfserve|sumup|swtrains|train',
-    'Personal card2card': r'withdrawal'
 }
 
 personal_categories: list[type[PersonalCategoryRegex]] = get_all_personal_categories(db_session)
+personal_bank_accounts: list[type[BankAccount]] = get_all_bank_accounts(db_session)
+my_accounts_names_escaped: list[str] = [re.escape(str(ba.name_from_csv)) for ba in personal_bank_accounts]
+personal_accounts_known_numbers = [re.search(r'\d{1,5}', ap).group(0) for ap in my_accounts_names_escaped]
+accounts_number_escaped_pattern = '|'.join(personal_accounts_known_numbers)
+
+
+class TransferTypes(enum.Enum):
+    TRANSFER_TO: str = 'Transfer to'  # for debit
+    TRANSFER_FROM: str = 'Transfer from'  # for debit
+    CASH_CREDIT: str = 'Cash credit'  # withdrawal
+    PAYMENT_TO: str = 'Payment to'  # transfers to ppl or personal credit card
+    # "Bank Credit A B C" (type and description) for personal transfers in
 
 
 # TODO manual category override at load stage?
@@ -77,6 +87,34 @@ def get_categories_from_entity(entity: str) -> list[str | None]:
     return res
 
 
+def get_flow_from_raw_transaction(description: str, type_str: str, direction: str) -> Literal[
+    'me2me', 'me2others', 'others2me', 'mepayment', 'refund']:
+    if not type_str:
+        type_str = description
+    # if descriptions matches with any of derived accounts (from csv, start of etl)
+    # print(accounts_number_escaped_pattern)
+    # print(f'--{description}--, --{type_str}--, --{direction}--')
+    if (
+            description in ('PAYMENT RECEIVED -- THANKYOU', 'MEMBER CREDIT CARD')
+            or description == TransferTypes.CASH_CREDIT.value
+            or re.search(accounts_number_escaped_pattern, description)
+            and type_str in (TransferTypes.TRANSFER_TO.value,
+                             TransferTypes.TRANSFER_FROM.value,
+                             TransferTypes.CASH_CREDIT.value)
+    ):
+        return 'me2me'
+    elif direction == 'out' and type_str == TransferTypes.PAYMENT_TO.value:  # TODO filter the credit card from there
+        return 'me2others'
+    elif re.search(r'bank credit', type_str, re.IGNORECASE) and direction == 'in':
+        return 'others2me'
+    elif direction == 'in':
+        return 'refund'
+    else:
+        return 'mepayment'
+
+
+res = get_categories_from_raw_transaction = get_flow_from_raw_transaction('070806 32616116', 'Transfer to', 'out')
+print(res)
 # get_categories_from_entity()
 # categorised = defaultdict(list)
 # q = db_session.query(EnhancedTransaction)
