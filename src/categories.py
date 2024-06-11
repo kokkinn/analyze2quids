@@ -35,7 +35,6 @@ CATEGORY_REGEX: dict[str, str] = {
     'amazon': 'amazon',
     'apple_bill': r'apple\.com',
     'aws': r'aws',
-    'charity': r'charity',
     'clothes': r'primark|marks&spencer|h & m|foot locker|british heart foundation|pah|st christophers|hewits of croydon',
     'driving learning': r'dvsa|dvla|reddriving',
     'education': r'hillel|course',
